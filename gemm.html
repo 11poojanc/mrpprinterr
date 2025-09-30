@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A4 5x13 Small Label Generator (38mm x 21mm)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* General styles */
+        body { font-family: 'Inter', sans-serif; }
+
+        /* --- Print Styles for A4 Paper (Crucial for alignment) --- */
+        @media print {
+            /* Hide the control panel */
+            .print\:hidden {
+                 display: none !important;
+            }
+
+            /* Target the main container of the grid for the total sticker block size */
+            #printableArea {
+                width: 190mm; /* 5 * 38mm */
+                height: 273mm; /* 13 * 21mm */
+                box-shadow: none !important;
+                border: none !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                background: white !important;
+            }
+            
+            /* Adjust cell sizing for accurate print fit */
+            #printableArea > div {
+                height: 21mm !important; 
+                width: 38mm !important; 
+                padding: 0.1rem !important;
+                border-color: #eee !important; 
+                font-family: Arial, sans-serif; /* Use a clean print font */
+            }
+
+            /* Font size adjustments for extremely small labels */
+            #printableArea .label-mrp { 
+                font-size: 11px !important; /* Smaller than Tailwind's text-sm */
+                line-height: 1.1;
+                margin-bottom: 1px !important;
+            }
+            #printableArea .label-date { 
+                font-size: 9px !important; /* Smaller than Tailwind's text-xs */
+                line-height: 1.1;
+            }
+
+            /* IMPORTANT: Set browser margins to NONE or ZERO in the print dialog. */
+            @page {
+                size: A4 portrait;
+                margin: 0 !important; 
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Control Panel (Hidden during Print) -->
+    <div id="control-panel" class="p-6 bg-white shadow-xl sticky top-0 z-10 print:hidden">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">A4 Sticker Label Generator (5x13 | 38mm x 21mm)</h1>
+        <p class="text-sm text-gray-600 mb-6">Enter your data, use the fine-tune controls to set your printer margins, and click 'Print Sheet'.</p>
+        
+        <!-- Data Inputs -->
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label for="mrp" class="block text-sm font-medium text-gray-700">MRP (e.g., 199.00)</label>
+                <input type="text" id="mrp" value="199.00" oninput="updateFormData(this)"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border" placeholder="199.00">
+            </div>
+            <div>
+                <label for="manDate" class="block text-sm font-medium text-gray-700">Man. Date (MM/YY)</label>
+                <input type="text" id="manDate" value="2024-09" oninput="updateFormData(this)"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border" placeholder="MM/YY">
+            </div>
+            <div>
+                <label for="expDate" class="block text-sm font-medium text-gray-700">Exp. Date (MM/YY)</label>
+                <input type="text" id="expDate" value="2025-09" oninput="updateFormData(this)"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border" placeholder="MM/YY">
+            </div>
+        </div>
+        
+        <!-- Margin Adjustment Inputs -->
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded-md">
+            <p class="text-sm font-medium text-yellow-800 mb-2">
+                ⭐ <b>Fine-Tune Alignment</b> (Base: <span id="base-left">10</span>mm Left, <span id="base-top">12</span>mm Top)
+            </p>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="topMarginAdjustment" class="block text-xs font-medium text-yellow-900">Top Margin Adjustment (mm)</label>
+                    <input type="number" id="topMarginAdjustment" value="12" oninput="updateMargins()"
+                        class="mt-1 block w-full rounded-md border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-2 border text-sm" placeholder="12">
+                </div>
+                <div>
+                    <label for="leftMarginAdjustment" class="block text-xs font-medium text-yellow-900">Left Margin Adjustment (mm)</label>
+                    <input type="number" id="leftMarginAdjustment" value="10" oninput="updateMargins()"
+                        class="mt-1 block w-full rounded-md border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-2 border text-sm" placeholder="10">
+                </div>
+            </div>
+            <p class="text-xs text-yellow-900 mt-2">
+                *Print on plain paper first. These numbers set the starting offset of the labels from the page edge.*
+            </p>
+        </div>
+        
+
+        <button onclick="window.print()"
+            class="w-full md:w-auto mt-2 px-6 py-2 border border-transparent text-base font-medium rounded-md shadow-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5 4v1H3v10h14V5h-2V4h3a1 1 0 011 1v12a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1h3zM7 7h6v3H7V7zm-2 5h10v2H5v-2z" clip-rule="evenodd" />
+            </svg>
+            Print Sheet (65 Labels)
+        </button>
+    </div>
+    
+    <!-- Sticker Preview Area -->
+    <div class="p-6 flex justify-center">
+        <div id="printableArea"
+            class="grid grid-cols-5 gap-0 shadow-2xl border border-gray-400 bg-gray-100"
+            style="width: 190mm; min-height: 273mm; margin-top: 12mm; margin-left: 10mm;"
+        >
+            <!-- Labels will be inserted here by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // --- PHYSICAL DIMENSIONS ---
+        const STICKER_WIDTH_MM = 38;
+        const STICKER_HEIGHT_MM = 21;
+        const COLUMNS = 5; 
+        const ROWS = 13;
+        const STICKER_COUNT = COLUMNS * ROWS;
+        const A4_HEIGHT_MM = 297;
+        const A4_WIDTH_MM = 210;
+        
+        // Calculated base margins (assuming stickers are centered)
+        const INITIAL_LEFT_MARGIN = (A4_WIDTH_MM - (COLUMNS * STICKER_WIDTH_MM)) / 2; // 10mm
+        const INITIAL_TOP_MARGIN = (A4_HEIGHT_MM - (ROWS * STICKER_HEIGHT_MM)) / 2; // 12mm
+
+        // --- STATE/DATA ---
+        let formData = {
+            mrp: '199.00',
+            manDate: '2024-09',
+            expDate: '2025-09',
+        };
+
+        // --- FUNCTIONS ---
+        
+        // Function to generate the HTML content for one label
+        function formatContent(data) {
+            // Using Tailwind's text-sm for MRP and text-xs (12px) for dates 
+            // The print CSS will enforce even smaller px values (11px, 9px)
+            return `
+                <div class="font-bold text-sm label-mrp mb-0 whitespace-nowrap">
+                    MRP: <span class="text-green-700">Rs. ${data.mrp}</span>
+                </div>
+                <div class="text-xs label-date">
+                    Man. Date: ${data.manDate}
+                </div>
+                <div class="text-xs label-date">
+                    Exp. Date: ${data.expDate}
+                </div>
+            `;
+        }
+
+        // Function to update the global formData from inputs
+        function updateFormData(inputElement) {
+            formData[inputElement.id] = inputElement.value;
+            renderLabels(); // Rerender all labels with the new data
+        }
+
+        // Function to update the margin styles when inputs change
+        function updateMargins() {
+            const top = document.getElementById('topMarginAdjustment').value || 0;
+            const left = document.getElementById('leftMarginAdjustment').value || 0;
+            
+            const printableArea = document.getElementById('printableArea');
+            printableArea.style.marginTop = `${parseFloat(top)}mm`;
+            printableArea.style.marginLeft = `${parseFloat(left)}mm`;
+        }
+
+        // Function to render all 65 labels
+        function renderLabels() {
+            const printableArea = document.getElementById('printableArea');
+            let html = '';
+            const content = formatContent(formData);
+            
+            for (let i = 0; i < STICKER_COUNT; i++) {
+                html += `
+                    <div id="sticker-${i}"
+                        class="w-full h-[50px] border border-gray-200 bg-white shadow-inner 
+                               flex flex-col items-center justify-center p-1 
+                               text-gray-900 overflow-hidden"
+                    >
+                        ${content}
+                    </div>
+                `;
+            }
+            printableArea.innerHTML = html;
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            // Set initial input values based on calculated margins
+            document.getElementById('topMarginAdjustment').value = INITIAL_TOP_MARGIN;
+            document.getElementById('leftMarginAdjustment').value = INITIAL_LEFT_MARGIN;
+            document.getElementById('base-left').textContent = INITIAL_LEFT_MARGIN;
+            document.getElementById('base-top').textContent = INITIAL_TOP_MARGIN;
+
+            // Apply initial margins to the printable area element
+            document.getElementById('printableArea').style.marginTop = `${INITIAL_TOP_MARGIN}mm`;
+            document.getElementById('printableArea').style.marginLeft = `${INITIAL_LEFT_MARGIN}mm`;
+
+            renderLabels();
+        };
+
+    </script>
+</body>
+</html>
