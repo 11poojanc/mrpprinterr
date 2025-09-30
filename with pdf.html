@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRP Sticker Layout Adjuster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Barcode libraries removed -->
+    
+    <style>
+        /* General styles */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* Define CSS variables for dynamic styles */
+            --mrp-font-size: 11px;
+            --date-font-size: 9px;
+            --text-color: #000000;
+            --label-bg-color: #ffffff;
+            /* Barcode CSS variables removed */
+            --text-align: center; /* Horizontal alignment */
+            --label-padding: 1px; /* Internal padding */
+            --vertical-align-css: center; /* Vertical alignment for flexbox: flex-start, center, flex-end */
+        }
+
+        /* Custom button styling with deeper gradient and shadow */
+        .btn-primary {
+            /* Dark slate to indigo gradient */
+            background-image: linear-gradient(to right, #4c1d95 0%, #6366f1 100%); 
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 29, 149, 0.4);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 10px 20px rgba(76, 29, 149, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        /* New vibrant teal focus/accent color */
+        .input-style {
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-style:focus {
+            border-color: #0d9488; /* Teal-700 */
+            box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.5); /* Teal-400 */
+        }
+        
+        /* Removed unnecessary sticky control panel CSS since the layout is now stacked */
+        /*
+
+        */
+
+        /* Styling for the color input box */
+        .color-input {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 40px;
+            height: 40px;
+            padding: 2px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .color-input::-webkit-color-swatch {
+            border-radius: 6px;
+            border: none;
+        }
+        .color-input::-moz-color-swatch {
+            border-radius: 6px;
+            border: none;
+        }
+        
+        /* Text Container (renamed from barcode-container) */
+        .text-content-container {
+            display: flex;
+            flex-direction: column;
+            align-items: var(--text-align); /* Horizontal control */
+            justify-content: var(--vertical-align-css); /* Vertical control */
+            height: 100%;
+            padding: var(--label-padding); /* Internal padding control */
+            box-sizing: border-box;
+        }
+        
+        /* --- Print Styles for A4 Paper (Crucial for alignment) --- */
+        @media print {
+            /* Hide the control panel */
+            .print\:hidden {
+                 display: none !important;
+            }
+
+            /* Target the main container of the grid for the total sticker block size */
+            #printableArea {
+                width: 190mm; /* 5 * 38mm */
+                height: 273mm; /* 13 * 21mm */
+                box-shadow: none !important;
+                border: none !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                background: white !important;
+                align-content: flex-start; 
+            }
+            
+            /* Adjust cell sizing for accurate print fit */
+            #printableArea > div {
+                height: 21mm !important; 
+                width: 38mm !important; 
+                /* Padding in print should be controlled by the container's CSS variable */
+                padding: 0 !important;
+                font-family: Arial, sans-serif;
+                color: var(--text-color) !important;
+                background-color: var(--label-bg-color) !important;
+                border-color: transparent !important;
+                text-align: var(--text-align) !important; 
+            }
+            
+            #printableArea .print-border {
+                border: 1px solid #000000 !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Content container alignment and padding */
+            #printableArea .text-content-container {
+                padding: var(--label-padding) !important;
+                justify-content: var(--vertical-align-css) !important;
+            }
+
+            /* Font size adjustments using CSS variables for Print */
+            #printableArea .label-mrp { 
+                font-size: var(--mrp-font-size) !important;
+                line-height: 1.1;
+                margin-bottom: 1px !important;
+            }
+            #printableArea .label-date { 
+                font-size: var(--date-font-size) !important;
+                line-height: 1.1;
+            }
+            
+            /* IMPORTANT: Set browser margins to NONE or ZERO in the print dialog. */
+            @page {
+                size: A4 portrait;
+                margin: 0 !important; 
+            }
+        }
+        
+    </style>
+</head>
+<body class="bg-gray-800 min-h-screen">
+
+    <!-- Main Container -->
+    <div class="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
+
+        <!-- Stacked Layout Wrapper - Removed lg:flex-row -->
+        <div class="flex flex-col gap-8">
+
+            <!-- Control Panel (Top Section - Now always full width) -->
+            <div id="control-panel" class="bg-white shadow-2xl rounded-2xl p-6 print:hidden w-full">
+                <header class="mb-6 border-b pb-4">
+                    <h1 class="text-3xl font-extrabold text-cyan-700">✨ Label Sheet Configurator</h1>
+                    <p class="text-sm text-gray-500 mt-1">A4 5x13 Layout (38mm x 21mm) for precise printing. Settings saved automatically.</p>
+                </header>
+                
+                <div class="space-y-6">
+                    <!-- Content Card -->
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-lg">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">📝 Content & Mode</h2>
+                        
+                        <!-- --- Content Mode Selector --- -->
+                        <h3 class="text-base font-semibold text-gray-700 mb-3 border-b pb-2">Label Content Mode</h3>
+                        <div class="flex flex-wrap gap-4 mb-6 text-sm">
+                            <label class="flex items-center">
+                                <input type="radio" name="contentMode" value="fixed" checked onchange="handleInput(this)"
+                                    class="text-cyan-600 focus:ring-cyan-500">
+                                <span class="ml-2 font-medium text-gray-700">Fixed Fields</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="contentMode" value="custom" onchange="handleInput(this)"
+                                    class="text-cyan-600 focus:ring-cyan-500">
+                                <span class="ml-2 font-medium text-gray-700">Custom Text</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="contentMode" value="variable" onchange="handleInput(this)"
+                                    class="text-cyan-600 focus:ring-cyan-500">
+                                <span class="ml-2 font-medium text-gray-700">Variable Data (65 Unique)</span>
+                            </label>
+                        </div>
+
+                        <!-- --- FIXED FIELDS INPUTS (Same Content on All 65 Labels) --- -->
+                        <div id="fixed-fields-section" class="mb-6">
+                            <!-- Retained grid-cols-3 for compact display within the wide control panel -->
+                            <div class="grid md:grid-cols-3 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="mrp" class="block text-sm font-medium text-gray-700">MRP Value</label>
+                                    <input type="text" id="mrp" value="199.00" oninput="handleInput(this)"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border input-style" placeholder="199.00">
+                                </div>
+                                <div>
+                                    <label for="manDate" class="block text-sm font-medium text-gray-700">Man. Date</label>
+                                    <input type="text" id="manDate" value="2024-09" oninput="handleInput(this)"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border input-style" placeholder="MM/YY">
+                                </div>
+                                <div>
+                                    <label for="expDate" class="block text-sm font-medium text-gray-700">Exp. Date</label>
+                                    <input type="text" id="expDate" value="2025-09" oninput="handleInput(this)"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border input-style" placeholder="MM/YY">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- --- CUSTOM TEXTAREA INPUT (Same Content on All 65 Labels) --- -->
+                        <div id="custom-textarea-section" class="mb-6 hidden">
+                            <label for="customContent" class="block text-sm font-medium text-gray-700">Type Content (Use **Enter** for New Lines) - Use **bold** or __underline__</label>
+                            <textarea id="customContent" oninput="handleInput(this)"
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border input-style h-28" 
+                                placeholder="Example:&#10;**Product Name**&#10;Lot: 12345&#10;__Exp: 2025-09__">MRP: Rs. 199.00
+Man. Date: 2024-09
+Exp. Date: 2025-09</textarea>
+                        </div>
+
+                        <!-- --- VARIABLE DATA INPUT (Unique Content per Label) --- -->
+                        <div id="variable-content-section" class="mb-6 hidden">
+                            <label for="variableData" class="block text-sm font-medium text-gray-700">Paste up to 65 unique lines of data (One line per label)</label>
+                            <textarea id="variableData" oninput="handleInput(this)"
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border input-style h-40" 
+                                placeholder="Product-1001&#10;Product-1002&#10;Product-1003&#10;... (up to 65 lines)">PROD-0001
+PROD-0002
+PROD-0003
+PROD-0004
+PROD-0005</textarea>
+                            <p class="text-xs text-gray-500 mt-1">Current entries: <span id="variable-count">5</span> / 65 max</p>
+                            <p class="text-xs text-red-500 mt-1 hidden" id="variable-warning">Warning: Only the first 65 lines will be used.</p>
+                            
+                            <!-- --- START INDEX FEATURE --- -->
+                             <div class="mt-4">
+                                <label for="startIndex" class="block text-sm font-medium text-gray-700">Variable Data Start Label (1-65)</label>
+                                <input type="number" id="startIndex" value="1" min="1" max="65" oninput="handleInput(this)"
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border text-sm input-style">
+                                <p class="text-xs text-gray-500 mt-1">If set to 10, Label 1 will be blank, Label 10 will use the 1st line of data.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Typography & Alignment Card (Combined Barcode space) -->
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-lg">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">📐 Typography & Alignment</h2>
+                        
+                        <!-- --- ALIGNMENT --- -->
+                        <h3 class="text-base font-semibold text-gray-700 mb-3 border-b pb-2">Horizontal & Vertical Alignment</h3>
+                         
+                         <!-- Horizontal Alignment -->
+                         <div class="mb-4">
+                             <label class="block text-xs font-medium text-gray-500 mb-1">Horizontal Text Position ↔️</label>
+                             <div class="grid grid-cols-3 gap-2">
+                                <label class="flex items-center p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                                    <input type="radio" name="textAlign" value="left" onchange="handleAlignmentChange(this)"
+                                        class="text-cyan-600 focus:ring-cyan-500">
+                                    <span class="ml-2 text-sm text-gray-700">Left</span>
+                                </label>
+                                <label class="flex items-center p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                                    <input type="radio" name="textAlign" value="center" checked onchange="handleAlignmentChange(this)"
+                                        class="text-cyan-600 focus:ring-cyan-500">
+                                    <span class="ml-2 text-sm text-gray-700">Center</span>
+                                </label>
+                                <label class="flex items-center p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                                    <input type="radio" name="textAlign" value="right" onchange="handleAlignmentChange(this)"
+                                        class="text-cyan-600 focus:ring-cyan-500">
+                                    <span class="ml-2 text-sm text-gray-700">Right</span>
+                                </label>
+                            </div>
+                         </div>
+
+                        <!-- Vertical Alignment -->
+                         <div class="mb-4">
+                             <label class="block text-xs font-medium text-gray-500 mb-1">Vertical Text Position ↕️</label>
+                             <div class="grid grid-cols-3 gap-2">
+                                <label class="flex items-center p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                                    <input type="radio" name="verticalAlign" value="flex-start" onchange="handleVerticalAlignmentChange(this)"
+                                        class="text-cyan-600 focus:ring-cyan-500">
+                                    <span class="ml-2 text-sm text-gray-700">Top</span>
+                                </label>
+                                <label class="flex items-center p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                                    <input type="radio" name="verticalAlign" value="center" checked onchange="handleVerticalAlignmentChange(this)"
+                                        class="text-cyan-600 focus:ring-cyan-500">
+                                    <span class="ml-2 text-sm text-gray-700">Middle</span>
+                                </label>
+                                <label class="flex items-center p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                                    <input type="radio" name="verticalAlign" value="flex-end" onchange="handleVerticalAlignmentChange(this)"
+                                        class="text-cyan-600 focus:ring-cyan-500">
+                                    <span class="ml-2 text-sm text-gray-700">Bottom</span>
+                                </label>
+                            </div>
+                         </div>
+                        
+                        <h3 class="text-base font-semibold text-gray-700 mb-3 border-b pb-2 mt-6">Font & Padding</h3>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label for="mrpFontSize" class="block text-sm font-medium text-gray-700">Line 1 Size (px)</label>
+                                <input type="number" id="mrpFontSize" value="11" oninput="handleFontSizes(this)" min="6" max="18"
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border text-sm input-style" placeholder="11">
+                            </div>
+                            <div>
+                                <label for="dateFontSize" class="block text-sm font-medium text-gray-700">Lines 2+ Size (px)</label>
+                                <input type="number" id="dateFontSize" value="9" oninput="handleFontSizes(this)" min="6" max="18"
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border text-sm input-style" placeholder="9">
+                            </div>
+                             <div>
+                                <label for="paddingMM" class="block text-sm font-medium text-gray-700">Padding (mm)</label>
+                                <input type="number" id="paddingMM" value="1" oninput="handlePaddingChange(this)" min="0" max="3" step="0.5"
+                                    class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border text-sm input-style" placeholder="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aesthetics Card -->
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-lg">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">🎨 Label Aesthetics</h2>
+
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <!-- Text Color Picker -->
+                            <div>
+                                <label for="textColor" class="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
+                                <input type="color" id="textColor" value="#000000" oninput="handleColorChange(this)" class="color-input">
+                            </div>
+                            <!-- Background Color Picker -->
+                            <div>
+                                <label for="labelBackgroundColor" class="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
+                                <input type="color" id="labelBackgroundColor" value="#ffffff" oninput="handleColorChange(this)" class="color-input">
+                            </div>
+                        </div>
+
+                        <!-- Border Toggle -->
+                        <div class="flex items-center pt-2 mt-4 border-t border-gray-200">
+                            <input type="checkbox" id="showLabelBorders" checked onchange="handleInput(this)"
+                                class="h-4 w-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500">
+                            <label for="showLabelBorders" class="ml-2 block text-sm font-medium text-gray-700">Show Label Borders (for printing)</label>
+                        </div>
+                    </div>
+                        
+                    <!-- Margin Adjustment Card - High Contrast -->
+                    <div class="bg-cyan-700 border-l-4 border-cyan-400 p-4 rounded-xl shadow-2xl">
+                        <p class="text-lg font-bold text-white mb-3 flex items-center">
+                            🎯 Fine-Tune Alignment
+                        </p>
+                        <p class="text-xs text-cyan-100 mb-4 italic">
+                            Adjust these values to correct for printer drift. Base margins are calculated for A4 centering.
+                        </p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="topMarginAdjustment" class="block text-xs font-medium text-cyan-200">Top Margin (mm) — Base: <span id="base-top" class="font-bold">12</span>mm</label>
+                                <input type="number" id="topMarginAdjustment" value="12" oninput="handleMargins(this)"
+                                    class="mt-1 block w-full rounded-lg border-cyan-600 shadow-sm p-2 border text-sm text-gray-800 focus:border-cyan-400" placeholder="12">
+                            </div>
+                            <div>
+                                <label for="leftMarginAdjustment" class="block text-xs font-medium text-cyan-200">Left Margin (mm) — Base: <span id="base-left" class="font-bold">10</span>mm</label>
+                                <input type="number" id="leftMarginAdjustment" value="10" oninput="handleMargins(this)"
+                                    class="mt-1 block w-full rounded-lg border-cyan-600 shadow-sm p-2 border text-sm text-gray-800 focus:border-cyan-400" placeholder="10">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-4 mt-6">
+                    <button onclick="window.print()"
+                        class="btn-primary w-full px-6 py-3 text-base font-medium rounded-xl text-white focus:outline-none focus:ring-4 focus:ring-cyan-400 transition duration-150 ease-in-out">
+                        <span class="text-lg">🖨️</span> Print Sheet (65 Labels)
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Sticker Preview Area (Bottom Section - Now always full width) -->
+            <div class="flex-1 flex justify-center p-4 lg:p-0 lg:pt-4 w-full">
+                <div id="printableArea"
+                    class="grid grid-cols-5 gap-0 shadow-2xl border border-gray-300 bg-white"
+                    style="width: 190mm; min-height: 273mm; margin-top: 12mm; margin-left: 10mm; text-align: center;"
+                >
+                    <!-- Labels will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- PHYSICAL DIMENSIONS ---
+        const STICKER_WIDTH_MM = 38;
+        const STICKER_HEIGHT_MM = 21;
+        const COLUMNS = 5; 
+        const ROWS = 13;
+        const STICKER_COUNT = COLUMNS * ROWS;
+        const A4_HEIGHT_MM = 297;
+        const A4_WIDTH_MM = 210;
+        const STORAGE_KEY = 'labelConfig_v5_textonly'; // Updated key for Barcode Removal
+        
+        // Calculated base margins (assuming stickers are centered)
+        const INITIAL_LEFT_MARGIN = (A4_WIDTH_MM - (COLUMNS * STICKER_WIDTH_MM)) / 2; // 10mm
+        const INITIAL_TOP_MARGIN = (A4_HEIGHT_MM - (ROWS * STICKER_HEIGHT_MM)) / 2; // 12mm
+
+        // --- STATE/DATA (Default Values) ---
+        let formData = {
+            mrp: '199.00',
+            manDate: '2024-09',
+            expDate: '2025-09',
+            customContent: 'MRP: Rs. 199.00\nMan. Date: 2024-09\nExp. Date: 2025-09',
+            variableData: 'PROD-0001\nPROD-0002\nPROD-0003\nPROD-0004\nPROD-0005',
+            textColor: '#000000',
+            labelBackgroundColor: '#ffffff',
+            showLabelBorders: true,
+            startIndex: 1, 
+            mrpFontSize: 11,
+            dateFontSize: 9,
+            paddingMM: 1, 
+            topMarginAdjustment: INITIAL_TOP_MARGIN,
+            leftMarginAdjustment: INITIAL_LEFT_MARGIN,
+            textAlign: 'center',
+            verticalAlign: 'center', 
+        };
+
+        let contentMode = 'fixed';
+
+        // --- LOCAL STORAGE HANDLING ---
+
+        function saveSettings() {
+            try {
+                const settingsToSave = {
+                    ...formData,
+                    contentMode: contentMode,
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToSave));
+            } catch (e) {
+                console.error("Could not save settings to localStorage:", e);
+            }
+        }
+
+        function loadSettings() {
+            try {
+                const savedSettings = localStorage.getItem(STORAGE_KEY);
+                if (savedSettings) {
+                    const parsedSettings = JSON.parse(savedSettings);
+                    formData = { ...formData, ...parsedSettings };
+                    contentMode = parsedSettings.contentMode || 'fixed';
+                }
+            } catch (e) {
+                console.error("Could not load settings from localStorage:", e);
+            }
+        }
+
+        function applySettingsToUI() {
+            for (const key in formData) {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = formData[key];
+                    } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
+                        element.value = formData[key];
+                    }
+                }
+            }
+            
+            // Restore radio buttons
+            document.querySelector(`input[name="contentMode"][value="${contentMode}"]`).checked = true;
+            document.querySelector(`input[name="textAlign"][value="${formData.textAlign}"]`).checked = true;
+            document.querySelector(`input[name="verticalAlign"][value="${formData.verticalAlign}"]`).checked = true;
+            
+            // Note: barcodePosition radio buttons are removed.
+
+            // Trigger updates to re-apply CSS variables and rerender labels
+            updateMargins();
+            handleFontSizes(); 
+            handlePaddingChange(document.getElementById('paddingMM')); 
+            
+            // Corrected function name
+            handleColorChange(document.getElementById('textColor')); 
+            handleColorChange(document.getElementById('labelBackgroundColor'));
+            
+            // Barcode height CSS variable removal is now handled by CSS cleanup
+
+            updateAlignment(document.getElementById('printableArea'));
+            updateVerticalAlignment(document.getElementById('printableArea'));
+
+            // Ensure correct content section is visible
+            switchContentMode(contentMode); 
+            
+            // Update variable data count manually
+            const lines = formData.variableData.split('\n').filter(line => line.trim() !== '');
+            document.getElementById('variable-count').textContent = lines.length;
+
+            // Final render is called by handleFontSizes, which is called above.
+        }
+
+        // --- EVENT HANDLERS ---
+
+        function handleInput(inputElement) {
+            const key = inputElement.id || inputElement.name;
+            let value = inputElement.type === 'checkbox' ? inputElement.checked : inputElement.value;
+            
+            if (key === 'contentMode') {
+                contentMode = value;
+                switchContentMode(contentMode); 
+            } else {
+                formData[key] = value;
+                
+                // Special handling for startIndex to ensure it's a number and within range
+                if (key === 'startIndex') {
+                    const numValue = parseInt(value);
+                    if (isNaN(numValue) || numValue < 1) {
+                        formData[key] = 1;
+                    } else if (numValue > STICKER_COUNT) {
+                        formData[key] = STICKER_COUNT;
+                    } else {
+                        formData[key] = numValue;
+                    }
+                    document.getElementById(key).value = formData[key]; // Update UI if value was corrected
+                }
+                
+                renderLabels(); 
+                saveSettings();
+            }
+        }
+        
+        function handleAlignmentChange(inputElement) {
+             formData.textAlign = inputElement.value;
+             updateAlignment(document.getElementById('printableArea'));
+             renderLabels();
+             saveSettings();
+        }
+
+        function handleVerticalAlignmentChange(inputElement) {
+             formData.verticalAlign = inputElement.value;
+             updateVerticalAlignment(document.getElementById('printableArea'));
+             renderLabels();
+             saveSettings();
+        }
+        
+        function handlePaddingChange(inputElement) {
+             formData.paddingMM = inputElement.value || 0;
+             document.body.style.setProperty('--label-padding', `${formData.paddingMM}mm`);
+             renderLabels();
+             saveSettings();
+        }
+        
+        // Barcode setting handler removed
+
+        function handleFontSizes() {
+            formData.mrpFontSize = document.getElementById('mrpFontSize').value || 11;
+            formData.dateFontSize = document.getElementById('dateFontSize').value || 9;
+            
+            document.body.style.setProperty('--mrp-font-size', `${formData.mrpFontSize}px`);
+            document.body.style.setProperty('--date-font-size', `${formData.dateFontSize}px`);
+            
+            renderLabels();
+            saveSettings();
+        }
+
+        function handleColorChange(inputElement) {
+            const key = inputElement.id;
+            formData[key] = inputElement.value;
+            
+            if (key === 'textColor') {
+                document.body.style.setProperty('--text-color', formData.textColor);
+            } else if (key === 'labelBackgroundColor') {
+                document.body.style.setProperty('--label-bg-color', formData.labelBackgroundColor);
+            }
+            renderLabels();
+            saveSettings();
+        }
+        
+        function handleMargins() {
+            formData.topMarginAdjustment = document.getElementById('topMarginAdjustment').value || INITIAL_TOP_MARGIN;
+            formData.leftMarginAdjustment = document.getElementById('leftMarginAdjustment').value || INITIAL_LEFT_MARGIN;
+            
+            updateMargins();
+            saveSettings();
+        }
+
+        // --- UPDATE FUNCTIONS ---
+
+        function switchContentMode(mode) {
+            contentMode = mode;
+            document.getElementById('fixed-fields-section').classList.toggle('hidden', mode !== 'fixed');
+            document.getElementById('custom-textarea-section').classList.toggle('hidden', mode !== 'custom');
+            document.getElementById('variable-content-section').classList.toggle('hidden', mode !== 'variable');
+            renderLabels();
+            saveSettings();
+        }
+
+        function updateAlignment(element) {
+             // Apply horizontal alignment to the main container and CSS variable
+             element.style.textAlign = formData.textAlign;
+             document.body.style.setProperty('--text-align', formData.textAlign);
+        }
+
+        function updateVerticalAlignment() {
+             // Apply vertical alignment to the CSS variable for the flex container
+             document.body.style.setProperty('--vertical-align-css', formData.verticalAlign);
+        }
+
+        function updateMargins() {
+            const printableArea = document.getElementById('printableArea');
+            printableArea.style.marginTop = `${parseFloat(formData.topMarginAdjustment)}mm`;
+            printableArea.style.marginLeft = `${parseFloat(formData.leftMarginAdjustment)}mm`;
+        }
+        
+        // Barcode generation function removed
+        
+        // Function to parse markdown (bold/underline) for custom text mode
+        function parseMarkdown(text) {
+            let html = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+            html = html.replace(/\*([^*]+)\*/g, '<b>$1</b>');
+            html = html.replace(/__([^_]+)__/g, '<u>$1</u>');
+            html = html.replace(/_([^_]+)_/g, '<u>$1</u>');
+            return html;
+        }
+
+        // Function to get the content for a specific sticker index
+        function getStickerContent(index) {
+            if (contentMode === 'variable') {
+                const lines = formData.variableData.split('\n').filter(line => line.trim() !== '');
+                const startIndex = parseInt(formData.startIndex) || 1;
+                const dataIndex = index - (startIndex - 1); // Index 0 of array corresponds to (startIndex - 1)
+
+                // If current sticker index is before the desired start index, it's a blank label
+                if (index < startIndex - 1) {
+                    return '';
+                }
+                
+                // Get content, cycling if we run out of unique lines but need to fill the sheet
+                const content = lines[dataIndex % lines.length];
+                
+                // If dataIndex is within the lines length, use it. If dataIndex exceeds STICKER_COUNT, stop generating unique content.
+                if (dataIndex < STICKER_COUNT && content) {
+                    return content;
+                }
+                
+                return ''; // Blank if beyond the available data/sheet size
+                
+            } else if (contentMode === 'custom') {
+                return formData.customContent;
+            } else { // fixed
+                return `MRP: Rs. ${formData.mrp}\nMan. Date: ${formData.manDate}\nExp. Date: ${formData.expDate}`;
+            }
+        }
+
+        // Function to format content into styled HTML
+        function formatContent(content, line1Size, line2PlusSize, stickerIndex) {
+            let html = '';
+            const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            
+            if (lines.length === 0) {
+                return `<div class="text-gray-400 text-xs text-center">Empty Label ${stickerIndex + 1}</div>`;
+            }
+
+            // Generate HTML for Text Lines
+            lines.forEach((line, index) => {
+                const isFirstLine = index === 0;
+                const fontSize = isFirstLine ? line1Size : line2PlusSize;
+                
+                const styledLine = (contentMode === 'custom' || contentMode === 'variable') ? parseMarkdown(line) : line;
+
+                const classes = isFirstLine 
+                    ? 'font-bold label-mrp mb-0 whitespace-nowrap' 
+                    : 'label-date whitespace-nowrap';
+                
+                html += `<div class="${classes}" style="font-size: ${fontSize}px;">${styledLine}</div>`;
+            });
+
+            // Combine into the text container
+            return `
+                <div class="text-content-container">
+                    ${html}
+                </div>
+            `;
+        }
+
+
+        // Function to render all 65 labels
+        function renderLabels() {
+            const printableArea = document.getElementById('printableArea');
+            const line1Size = formData.mrpFontSize;
+            const line2PlusSize = formData.dateFontSize;
+            
+            const borderClass = formData.showLabelBorders ? 'border border-gray-200 print-border' : '';
+
+            let html = '';
+            
+            for (let i = 0; i < STICKER_COUNT; i++) {
+                const stickerContent = getStickerContent(i);
+                const formattedContent = formatContent(stickerContent, line1Size, line2PlusSize, i);
+
+                html += `
+                    <div id="sticker-${i}"
+                        class="w-full h-[38px] bg-white shadow-inner 
+                               flex items-center justify-center p-1 
+                               text-gray-900 overflow-hidden ${borderClass}"
+                        style="color: ${formData.textColor}; background-color: ${formData.labelBackgroundColor};"
+                    >
+                        ${formattedContent}
+                    </div>
+                `;
+            }
+            printableArea.innerHTML = html;
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            loadSettings(); 
+            
+            document.getElementById('base-left').textContent = INITIAL_LEFT_MARGIN;
+            document.getElementById('base-top').textContent = INITIAL_TOP_MARGIN;
+
+            applySettingsToUI(); 
+        };
+
+    </script>
+</body>
+</html>
